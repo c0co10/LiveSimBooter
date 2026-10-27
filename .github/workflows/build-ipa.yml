@@ -12,6 +12,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Try Xcode project format compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i '' 's/objectVersion = 110;/objectVersion = 77;/' LiveSimBooter.xcodeproj/project.pbxproj
+          plutil -lint LiveSimBooter.xcodeproj/project.pbxproj
       - name: Build unsigned host
         shell: bash
         run: |
