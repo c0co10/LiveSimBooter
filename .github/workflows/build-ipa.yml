@@ -1,0 +1,42 @@
+name: Build unsigned host IPA
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-ipa.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unsigned host
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild -project LiveSimBooter.xcodeproj -scheme LiveSimBooter -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build 2>&1 | tee build.log
+      - name: Package host IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package/Payload
+          ditto build/Build/Products/Debug-iphoneos/LiveSimBooter.app package/Payload/LiveSimBooter.app
+          cd package
+          ditto -c -k --sequesterRsrc --keepParent Payload LiveSimBooter-unsigned-host.ipa
+          echo 'Unsigned host only. Simulator runtime and NativeMetal backend are not included. Device provisioning and runtime setup are still required.' > BUILD-NOTES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiveSimBooter-unsigned-host
+          path: |
+            package/LiveSimBooter-unsigned-host.ipa
+            package/BUILD-NOTES.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
